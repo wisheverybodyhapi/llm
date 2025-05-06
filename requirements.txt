@@ -1,0 +1,45 @@
+# pip install -r requirements.txt
+
+# 使用清华源
+-i https://pypi.tuna.tsinghua.edu.cn/simple
+
+# 核心数据科学库
+pip>=23.0  # 确保pip自身版本较新，避免安装问题
+pandas==2.2.2  # 稳定版本，支持最新numpy
+scikit-learn==1.5.1  # 最新稳定版，兼容pandas和numpy
+scipy==1.13.1  # 与scikit-learn兼容
+numpy==1.26.4  # 平衡torch、transformers和pandas的依赖需求
+
+# 文件处理和存储
+ujson==5.10.0  # 高效JSON处理，最新稳定版
+h5py==3.11.0  # HDF5文件处理，兼容numpy
+
+# 可视化
+seaborn==0.13.2  # 最新版，依赖matplotlib和pandas
+matplotlib==3.8.4  # 稳定版，兼容seaborn
+jupyterlab
+
+# 命令行工具
+click==8.1.7  # 最新稳定版，广泛用于CLI开发
+
+# PyTorch相关
+torch==2.3.1  # 最新稳定版，兼容transformers和numpy
+torchaudio==2.3.1  # 与torch版本一致
+torchtext==0.18.0  # 与torch版本一致
+torchvision==0.18.1  # 与torch版本一致
+
+# 内存和性能分析
+calmsize==0.1.3  # 简单内存分析，最新版
+memory-profiler==0.61  # 稳定版，兼容Python 3.8+
+
+# 数据处理
+portalocker==2.8.2  # 最新版，跨平台文件锁
+
+# 优化和机器学习
+cvxpy==1.5.2  # 最新稳定版，兼容scipy和numpy
+higher==0.2.1  # 用于元学习，稳定版，兼容torch
+
+# 深度学习和生成模型
+diffusers==0.29.2  # 最新稳定版，兼容transformers和torch
+accelerate==0.33.0  # 与transformers和torch兼容，用于分布式训练
+transformers==4.42.4  # 最新稳定版，兼容torch和diffusers
