@@ -1,0 +1,18 @@
+# 忽略 Python 缓存文件
+__pycache__/
+*.pyc
+
+# 忽略 Jupyter Notebook 临时文件
+*.ipynb_checkpoints/
+
+# 忽略环境配置文件
+.env
+
+# 忽略models目录
+models/
+
+# 忽略datasets目录
+datasets/
+
+# 忽略保存的模型参数
+params/

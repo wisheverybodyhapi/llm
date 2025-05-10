@@ -1,9 +1,11 @@
-from transformers import AutoModel, AutoTokenizer
+# Load model directly
+from transformers import AutoTokenizer, AutoModelForCausalLM
+import os
 
-model_name = "bert-base-chinese"
+cache_dir = "./models/"
+os.makedirs(cache_dir, exist_ok=True)
 
-cache_dir = "models/bert-base-chinese"
+tokenizer = AutoTokenizer.from_pretrained("uer/gpt2-chinese-cluecorpussmall", cache_dir=cache_dir)
+model = AutoModelForCausalLM.from_pretrained("uer/gpt2-chinese-cluecorpussmall", cache_dir=cache_dir)
 
-# 下载模型 指定分词器
-model = AutoModel.from_pretrained(model_name, cache_dir=cache_dir)
-tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=cache_dir)
+print(f"模型已经下载到{cache_dir}")
