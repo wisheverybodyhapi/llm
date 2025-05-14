@@ -39,9 +39,17 @@ portalocker==2.8.2  # 最新版，跨平台文件锁
 cvxpy==1.5.2  # 最新稳定版，兼容scipy和numpy
 higher==0.2.1  # 用于元学习，稳定版，兼容torch
 
+# RAG
+llama-index==0.11.1
+llama-index-embeddings-huggingface==0.3.1
+llama-index-llms-huggingface==0.3.4
+
 # 深度学习和生成模型
 diffusers==0.29.2  # 最新稳定版，兼容transformers和torch
 accelerate==0.33.0  # 与transformers和torch兼容，用于分布式训练
 transformers==4.42.4  # 最新稳定版，兼容torch和diffusers
-datasets
-tokenizers
+datasets==2.20.0
+tokenizers==0.19.1
+
+# 模型库
+modelscope==1.17.0
