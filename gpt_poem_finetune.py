@@ -10,7 +10,7 @@ from torch.utils.data import Dataset
 from transformers import BertTokenizer, GPT2LMHeadModel, TextGenerationPipeline
 
 # 指定要使用的GPU
-os.environ['CUDA_VISIBLE_DEVICES'] = '3,5,6,7'
+os.environ['CUDA_VISIBLE_DEVICES'] = '5'
 
 # 指定数据集缓存目录
 dataset_cache_dir = "/raid/gfc/llm/datasets/ChinesePoems"
@@ -160,15 +160,18 @@ def train(rank, world_size):
     # 记录最佳模型
     best_loss = float('inf')
 
-    model.train()
     for epoch in range(Epochs):
+        model.train()  # 确保每个epoch开始时模型都处于训练模式
         sampler.set_epoch(epoch)
         total_loss = 0
         num_batches = 0
         
         for i, batch in enumerate(loader):
+            optimizer.zero_grad()  # 在计算梯度前清零
+            
             input_ids = batch['input_ids'].to(device)
             labels = batch['labels'].to(device)
+            # print(input_ids.shape, labels.shape)  torch.Size([16, 194])
             outputs = model(input_ids, labels=labels)
             loss = outputs.loss
             loss.backward()
@@ -177,11 +180,10 @@ def train(rank, world_size):
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
               
             optimizer.step()
-            optimizer.zero_grad()
             
             if i % 100 == 0 and rank == 0:
                 with torch.no_grad():
-                    # 计算准确率
+                    # 计算准确率前先切换到评估模式
                     model.eval()
                     labels = batch['labels'][:, 1:].to(device)
                     out = outputs.logits.argmax(dim=2)[:, :-1]
@@ -193,8 +195,12 @@ def train(rank, world_size):
                     acc = (labels == out).sum().item() / labels.numel()
                     lr = optimizer.param_groups[0]['lr']
                     print(f"Epoch {epoch}, Step {i}, Lr {lr:.5e}, Loss {loss:.5f}, Acc {acc:.2%}")
-
+                    
+                    # 计算完准确率后切回训练模式
+                    model.train()
+                    
                     del select
+                    
             total_loss += loss.item()
             num_batches += 1
 
@@ -221,7 +227,7 @@ def train(rank, world_size):
     cleanup_distributed()
 
 def main():
-    world_size = 4  # 使用4张GPU
+    world_size = 1  # 使用4张GPU
     mp.spawn(train, args=(world_size,), nprocs=world_size, join=True)
 
 if __name__ == "__main__":
