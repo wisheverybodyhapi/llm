@@ -7,10 +7,10 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data.distributed import DistributedSampler
 from datasets import load_dataset
 from torch.utils.data import Dataset
-from transformers import BertTokenizer, GPT2LMHeadModel, TextGenerationPipeline
+from transformers import BertTokenizer, GPT2LMHeadModel
 
-# 指定要使用的GPU
-os.environ['CUDA_VISIBLE_DEVICES'] = '5'
+# # 指定要使用的GPU
+# os.environ['CUDA_VISIBLE_DEVICES'] = '5'
 
 # 指定数据集缓存目录
 dataset_cache_dir = "/raid/gfc/llm/datasets/ChinesePoems"
@@ -167,38 +167,46 @@ def train(rank, world_size):
         num_batches = 0
         
         for i, batch in enumerate(loader):
-            optimizer.zero_grad()  # 在计算梯度前清零
-            
-            input_ids = batch['input_ids'].to(device)
+            # 1. 对于GPT这类自回归（Causal Language Model, CLM）模型，labels和input_ids是一样的
+            input_ids = batch['input_ids'].to(device) # [batch_size, seq_len]
             labels = batch['labels'].to(device)
-            # print(input_ids.shape, labels.shape)  torch.Size([16, 194])
+            # 2. outputs包含loss,logits和past_key_values的字典
             outputs = model(input_ids, labels=labels)
+            # print(outputs.logits.shape) # [batch_size, seq_len, vocab_size]
             loss = outputs.loss
             loss.backward()
-
-            # 梯度裁剪
+            
+            # 3. 梯度裁剪
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
               
             optimizer.step()
+            optimizer.zero_grad()
             
-            if i % 100 == 0 and rank == 0:
+            if i % 100 == 0:
                 with torch.no_grad():
-                    # 计算准确率前先切换到评估模式
+                    # 1. 切换到评估模式（关闭dropout等）
                     model.eval()
-                    labels = batch['labels'][:, 1:].to(device)
-                    out = outputs.logits.argmax(dim=2)[:, :-1]
+                    # 2. 取模型输出的预测，每个位置选概率最大的token
+                    #    去掉最后一个token，因为最后一个token不需要再做预测
+                    out = outputs.logits.argmax(dim=2)[:, :-1] # [batch_size, seq_len-1]
 
+                    # 3. 取labels去掉第一个token，因为第一个token不会成为被预测的目标
+                    labels = batch['labels'][:, 1:].to(device) # [batch_size, seq_len-1]
+
+                    # 4. 只保留非padding部分（labels!=0），避免padding影响准确率
                     select = labels != 0
-                    labels = labels[select]
                     out = out[select]
-                    
+                    labels = labels[select]
+
+                    # 5. 计算准确率（预测正确的token数 / 有效token总数）
                     acc = (labels == out).sum().item() / labels.numel()
+                    # 6. 获取当前学习率，打印日志
                     lr = optimizer.param_groups[0]['lr']
                     print(f"Epoch {epoch}, Step {i}, Lr {lr:.5e}, Loss {loss:.5f}, Acc {acc:.2%}")
-                    
-                    # 计算完准确率后切回训练模式
+
+                    # 7. 切回训练模式
                     model.train()
-                    
+                    # 8. 删除变量释放显存
                     del select
                     
             total_loss += loss.item()
@@ -227,7 +235,7 @@ def train(rank, world_size):
     cleanup_distributed()
 
 def main():
-    world_size = 1  # 使用4张GPU
+    world_size = 8  # 使用8张GPU
     mp.spawn(train, args=(world_size,), nprocs=world_size, join=True)
 
 if __name__ == "__main__":
