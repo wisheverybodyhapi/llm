@@ -53,3 +53,8 @@ tokenizers==0.19.1
 
 # 模型库
 modelscope==1.17.0
+
+# 中文语料库
+jaconv==0.4.0
+zhconv==1.4.3
+simhash==2.1.2
