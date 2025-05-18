@@ -58,3 +58,6 @@ modelscope==1.17.0
 jaconv==0.4.0
 zhconv==1.4.3
 simhash==2.1.2
+
+# 向量数据库
+faiss-gpu==1.7.2
