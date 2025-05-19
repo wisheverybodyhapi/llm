@@ -6,14 +6,16 @@ cache_dir = "/raid/gfc/llm/models/"
 tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-1.5B-Instruct", cache_dir=cache_dir)
 model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-1.5B-Instruct", cache_dir=cache_dir)
 
+# 设置 datasets 缓存路径到有足够空间的目录
+os.environ["HF_DATASETS_CACHE"] = "/raid/gfc/.cache/huggingface/datasets"
+
 # 加载并格式化数据集
 dataset_path = "/raid/gfc/llm/datasets/Chinese-medical-dialogue"
 # 加载jsonl为HuggingFace Dataset对象
+# 这里数据集是jsonl格式，包含两列：prompt和response
+# train_dataset样本数量474749个，eval_dataset样本数量59344个
 train_dataset = load_dataset('json', data_files=os.path.join(dataset_path, 'train.jsonl'))['train']
-eval_dataset = load_dataset('json', data_files=os.path.join(dataset_path, 'train.jsonl'))['train']
-
-train_dataset = train_dataset.select(range(200))  # 测试
-eval_dataset = eval_dataset.select(range(200))
+eval_dataset = load_dataset('json', data_files=os.path.join(dataset_path, 'val.jsonl'))['train']
 
 # 需要用tokenizer处理成模型输入格式
 def preprocess_function(examples):
@@ -21,7 +23,7 @@ def preprocess_function(examples):
         examples['prompt'],
         text_target=examples['response'],
         truncation=True,
-        max_length=256,
+        max_length=128,
         padding=True,  # 动态 padding
         return_tensors="pt"
     )
@@ -32,8 +34,7 @@ eval_dataset = eval_dataset.map(preprocess_function, batched=True)
 
 training_args = TrainingArguments(
     output_dir="./qwen_medical_qa",
-    per_device_train_batch_size=4,
-    gradient_accumulation_steps=4,
+    per_device_train_batch_size=1,
     num_train_epochs=2,  # 减少 epoch
     learning_rate=2e-5,
     lr_scheduler_type="cosine",
