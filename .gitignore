@@ -16,3 +16,5 @@ datasets/
 
 # 忽略保存的模型参数
 params/
+
+qwen_medical_qa/
