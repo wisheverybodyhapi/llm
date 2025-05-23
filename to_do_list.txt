@@ -1,0 +1,1 @@
+1. 重新跑qwen_project.py，测评训练后的效果

@@ -1,21 +1,22 @@
 # 我的gpu为V100 32GB，我现在想微调qwen模型
-from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer, DataCollatorForSeq2Seq
+from transformers import AutoModelForCausalLM, TrainingArguments, Trainer, DataCollatorForSeq2Seq
 from datasets import load_dataset
-from modelscope import snapshot_download
+from modelscope import snapshot_download, AutoTokenizer
 from swanlab.integration.transformers import SwanLabCallback
 from peft import LoraConfig, TaskType, get_peft_model
+import torch
 import os
 
 # 设置下载缓存目录
 cache_dir = "/raid/gfc/llm/models"
-
 model_id = "Qwen/Qwen2.5-1.5B-Instruct"
+
 # 下载模型并返回本地路径
-cache_dir = snapshot_download(model_id, cache_dir=cache_dir)
+model_dir = snapshot_download(model_id, cache_dir=cache_dir)
 
 # 使用从 ModelScope 下载的模型和 tokenizer
-tokenizer = AutoTokenizer.from_pretrained(cache_dir)
-model = AutoModelForCausalLM.from_pretrained(cache_dir)
+tokenizer = AutoTokenizer.from_pretrained(model_dir, use_fast=False, trust_remote_code=True)
+model = AutoModelForCausalLM.from_pretrained(model_dir, torch_dtype=torch.bfloat16, trust_remote_code=True) 
 
 # 加载并格式化数据集
 dataset_path = "/raid/gfc/llm/datasets/Chinese-medical-dialogue"
@@ -44,10 +45,17 @@ def preprocess_function(example):
     """
     将数据集进行预处理
     """
-    MAX_LENGTH = 384 
+    MAX_LENGTH = 384
+    
     input_ids, attention_mask, labels = [], [], []
-    instruction = tokenizer(example['prompt'], add_special_tokens=False)
-    response = tokenizer(f"{example['response']}", add_special_tokens=False)
+    instruction = tokenizer(
+        f"<|im_start|>system\n你是一个专业的医学顾问,擅长通过医学知识回答患者提出的健康问题。你的回答应该专业,严谨,能够解答医学问题,提供健康建议。<|im_end|>\n<|im_start|>user\n{example['prompt']}<|im_end|>\n<|im_start|>assistant\n",
+        add_special_tokens=False
+    )
+    response = tokenizer(
+        f"{example['response']}",
+        add_special_tokens=False
+    )
     input_ids = instruction["input_ids"] + response["input_ids"]
     attention_mask = (
         instruction["attention_mask"] + response["attention_mask"]
@@ -83,8 +91,8 @@ model = get_peft_model(model, config)
 
 training_args = TrainingArguments(
     output_dir="./qwen_medical_qa",
-    per_device_train_batch_size=8,
-    num_train_epochs=3,  # 减少 epoch
+    per_device_train_batch_size=4,
+    num_train_epochs=1,  # 减少 epoch
     learning_rate=5e-5,
     lr_scheduler_type="cosine",
     warmup_ratio=0.02,  # 降低预热比例
@@ -103,7 +111,7 @@ swanlab_callback = SwanLabCallback(
     description="使用Qwen2.5-1.5B-Instruct模型在中文医疗问答数据集",
     config={
         "model": model_id,
-        "model_dir": cache_dir,
+        "model_dir": model_dir,
         "dataset": "https://huggingface.co/datasets/ticoAg/Chinese-medical-dialogue",
         "lora_rank": lora_rank,
         "lora_alpha": lora_alpha,
